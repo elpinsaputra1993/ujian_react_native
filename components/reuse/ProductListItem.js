@@ -33,7 +33,7 @@ export default class ProductListItem extends React.Component {
               />
             ) : (
               <Image
-                source={require('../../assets/img/placeholder_image-new.png')}
+                source={require('../../assets/img/member-secret.png')}
                 style={styles.imagePlaceholder}
               />
             )}
