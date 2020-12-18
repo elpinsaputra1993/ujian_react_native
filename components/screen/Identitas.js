@@ -1,5 +1,15 @@
 import React from 'react';
-import {PermissionsAndroid, Alert, FlatList, Modal, Text} from 'react-native';
+import {
+  PermissionsAndroid,
+  Alert,
+  FlatList,
+  Modal,
+  Image,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 
 import {
   Wrapper,
@@ -23,6 +33,10 @@ import sample_data from '../../sample_data';
 import ProductListItem from '../reuse/ProductListItem';
 import database from '@react-native-firebase/database';
 import GetLocation from 'react-native-get-location';
+import storage from '@react-native-firebase/storage';
+import {RNCamera} from 'react-native-camera';
+
+const PendingView = () => <View></View>;
 
 export default class Identitas extends React.Component {
   /*
@@ -47,8 +61,7 @@ export default class Identitas extends React.Component {
     nama: '',
     gender: '',
     umur: '',
-    status: null,
-    specification: '',
+    status: '',
     posisi: '',
     images: '',
     key: '',
@@ -59,6 +72,7 @@ export default class Identitas extends React.Component {
       {label: 'Pria', icon: null},
       {label: 'Wanita', icon: null},
     ],
+    camera_capture: '',
   };
 
   _keyExtractor = (item, index) => item.id;
@@ -150,6 +164,7 @@ export default class Identitas extends React.Component {
                   images: item.images,
                   key: item.key,
                 });
+                this.dummyImagesTest = item.key;
                 this.setState({showAddressModal: true});
                 this.setState({isEdit: true});
               }}
@@ -188,7 +203,19 @@ export default class Identitas extends React.Component {
           <Left>
             <IconBtn
               icon={'x'}
-              onPress={() => this.setState({showAddressModal: false})}
+              onPress={() =>
+                this.setState({
+                  showAddressModal: false,
+                  id: '',
+                  nama: '',
+                  gender: '',
+                  umur: '',
+                  status: '',
+                  // posisi: '',
+                  images: '',
+                  camera_capture: '',
+                })
+              }
               style={{marginLeft: -10}}
             />
           </Left>
@@ -257,8 +284,59 @@ export default class Identitas extends React.Component {
               this.focusNextField('location');
             }}
           />
+          <Space />
+          <Row>
+            <Column>
+              <RNCamera
+                style={styles.preview}
+                type={RNCamera.Constants.Type.back}
+                flashMode={RNCamera.Constants.FlashMode.off}
+                androidCameraPermissionOptions={{
+                  title: 'Permission to use camera',
+                  message: 'We need your permission to use your camera',
+                  buttonPositive: 'Ok',
+                  buttonNegative: 'Cancel',
+                }}
+                androidRecordAudioPermissionOptions={{
+                  title: 'Permission to use audio recording',
+                  message: 'We need your permission to use your audio',
+                  buttonPositive: 'Ok',
+                  buttonNegative: 'Cancel',
+                }}>
+                {({camera, status, recordAudioPermissionStatus}) => {
+                  this.camera = camera;
+                  if (status !== 'READY') {
+                    return <PendingView />;
+                  } else {
+                    return <View style={styles.capture}></View>;
+                  }
+                }}
+              </RNCamera>
+            </Column>
+
+            <Column>
+              <Btn
+                label="Ambil Gambar"
+                onPress={() => this.takePicture(this.camera)}
+              />
+            </Column>
+          </Row>
+
+          <Space />
+          <View
+            style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            <Image
+              source={{uri: this.state.images}}
+              style={{width: 235, height: 365, borderRadius: 18, marginTop: 3}}
+            />
+          </View>
+
+          <Space />
           <FloatingLabelInput
-            label="Location"
+            label="Location (Latitude / Longitude)"
             onChangeText={(text) => this.setState({posisi: text})}
             returnKeyType={'next'}
             value={`${this.state.location.longitude} / ${this.state.location.latitude}`}
@@ -272,33 +350,55 @@ export default class Identitas extends React.Component {
           />
 
           <Space />
-
           {this.addOrEdit()}
         </Container>
       </Wrapper>
     );
   }
 
+  uploadFile = async () => {
+    try {
+      let filename = this.state.camera_capture.substring(
+        this.state.camera_capture.lastIndexOf('/') + 1,
+      );
+      console.log(filename);
+      const imagereference = storage().ref(filename);
+
+      await imagereference.putFile(this.state.camera_capture);
+      const downloadURL = await imagereference.getDownloadURL();
+      this.setState({images: downloadURL});
+    } catch (e) {
+      console.log(e);
+    }
+
+    if (this.state.isEdit) {
+      this.editProduct();
+    } else {
+      this.addProduct();
+    }
+  };
+
+  takePicture = async function (camera) {
+    try {
+      const options = {quality: 0.5, base64: true};
+      const data = await camera.takePictureAsync(options);
+      //  eslint-disable-next-lin
+      this.setState({images: data.uri, camera_capture: data.uri});
+      console.log(data.uri);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   addOrEdit() {
     if (this.state.isEdit) {
-      return <Btn label={'Proses Data'} onPress={() => this.editProduct()} />;
+      return <Btn label={'Proses Data'} onPress={() => this.uploadFile()} />;
     } else {
-      return <Btn label={'Proses Data'} onPress={() => this.addProduct()} />;
+      return <Btn label={'Proses Data'} onPress={() => this.uploadFile()} />;
     }
   }
   addProduct() {
     console.log('data', this.state);
-    /*
-	  	id: "",
-		name: "",
-		rating: "",
-		price: "",
-		description: null,
-		specification: "",
-		brand_name:"",
-		images: "",
-		
-    */
     this.requestGPSPermission;
 
     database()
@@ -324,10 +424,10 @@ export default class Identitas extends React.Component {
           status: '',
           posisi: '',
           images: '',
+          camera_capture: '',
         });
       })
       .catch((error) => {
-        //error callback
         console.log('error ', error);
         Alert.alert('Gagal Insert', error);
       });
@@ -335,17 +435,6 @@ export default class Identitas extends React.Component {
 
   editProduct() {
     console.log('data', this.state);
-    /*
-			id: "",
-		  name: "",
-		  rating: "",
-		  price: "",
-		  description: null,
-		  specification: "",
-		  brand_name:"",
-		  images: "",
-		  
-		  */
     database()
       .ref('Member/' + this.state.key)
       .update({
@@ -358,7 +447,6 @@ export default class Identitas extends React.Component {
         images: this.state.images,
       })
       .then((data) => {
-        //success callback
         console.log('data ', data);
         this.setState({
           showAddressModal: false,
@@ -369,12 +457,32 @@ export default class Identitas extends React.Component {
           status: '',
           posisi: '',
           images: '',
+          camera_capture: '',
         });
       })
       .catch((error) => {
-        //error callback
         console.log('error ', error);
         Alert.alert('Gagal Update', error);
       });
   }
 }
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: 'black',
+  },
+  preview: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  capture: {
+    flex: 0,
+
+    padding: 15,
+    paddingHorizontal: 20,
+    alignSelf: 'center',
+    margin: 20,
+  },
+});
