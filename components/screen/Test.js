@@ -1,0 +1,8 @@
+import React, {Component} from 'react';
+import {Text} from 'react-native';
+
+export default class Test extends Component {
+  render() {
+    return <Text>Hello Selalu Ingatlah sama Tuhan mu Elpin...</Text>;
+  }
+}
