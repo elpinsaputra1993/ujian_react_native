@@ -1,5 +1,5 @@
 import React from 'react';
-import {PermissionsAndroid, Alert, FlatList, Modal} from 'react-native';
+import {PermissionsAndroid, Alert, FlatList, Modal, Text} from 'react-native';
 
 import {
   Wrapper,
@@ -55,6 +55,10 @@ export default class Identitas extends React.Component {
     listData: [],
     isEdit: false,
     location: {latitude: 0, longitude: 0},
+    genders: [
+      {label: 'Pria', icon: null},
+      {label: 'Wanita', icon: null},
+    ],
   };
 
   _keyExtractor = (item, index) => item.id;
@@ -90,12 +94,17 @@ export default class Identitas extends React.Component {
       } else {
         console.log('Location permission denied');
       }
+      this.setState({showAddressModal: true});
+      this.setState({isEdit: false});
     } catch (err) {
       console.warn(err);
     }
   };
 
   componentDidMount() {
+    // console.log(this.state.location);
+    this.requestGPSPermission;
+
     database()
       .ref('Member/')
       .on('value', (snapshot) => {
@@ -120,7 +129,9 @@ export default class Identitas extends React.Component {
     return (
       <>
         <H1>Daftar Data Member</H1>
-
+        {/* <Text>
+          {this.state.location.longitude} ;{this.state.location.latitude}
+        </Text> */}
         <FlatList
           data={this.state.listData}
           keyExtractor={(item) => item.key.toString()}
@@ -147,13 +158,16 @@ export default class Identitas extends React.Component {
         />
 
         <Btn
-          label="Add Data"
+          label="Add Member"
           onPress={() => {
-            this.setState({showAddressModal: true});
-            this.setState({isEdit: false});
             this.requestGPSPermission;
+            console.log('ditekan kok ...');
+            console.log(this.state.location);
           }}
+          onPressIn={this.requestGPSPermission}
         />
+
+        {/* <Btn label="Add Member2" onPress={this.requestGPSPermission} /> */}
 
         <Modal
           animationType="slide"
@@ -210,6 +224,12 @@ export default class Identitas extends React.Component {
             }}
           />
 
+          {/* <Picker
+            label="Gender"
+            // onChangeItem={(item) => this.setState({gender: item})}
+            value={this.state.gender}
+            items={this.state.genders}
+          /> */}
           <FloatingLabelInput
             label="Umur"
             onChangeText={(text) => this.setState({umur: text})}
@@ -261,9 +281,9 @@ export default class Identitas extends React.Component {
 
   addOrEdit() {
     if (this.state.isEdit) {
-      return <Btn label={'Edit Member'} onPress={() => this.editProduct()} />;
+      return <Btn label={'Proses Data'} onPress={() => this.editProduct()} />;
     } else {
-      return <Btn label={'Add Member'} onPress={() => this.addProduct()} />;
+      return <Btn label={'Proses Data'} onPress={() => this.addProduct()} />;
     }
   }
   addProduct() {
